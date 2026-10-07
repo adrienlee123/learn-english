@@ -87,5 +87,13 @@ gh api -X PUT "repos/$REPO/pages" \
   || echo "    (Pages may already be enabled)"
 
 sleep 3
+# A repo named after the owner serves from the root; anything else is a subpath.
+OWNER="${REPO%%/*}"
+NAME="${REPO##*/}"
+if [[ "$NAME" == "$OWNER.github.io" ]]; then
+  URL="https://$OWNER.github.io/"
+else
+  URL="https://$OWNER.github.io/$NAME/"
+fi
 echo
-echo "Live at: https://${REPO##*/}.github.io/"
+echo "Live at: $URL"
