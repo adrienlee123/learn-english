@@ -110,7 +110,60 @@ python3 .opencode/skills/tv-english-vocab/scripts/export_vocab.py \
 Matching is case-insensitive on `word`, so re-running the same episode does not
 create duplicates. `--tsv` writes tab-separated instead, for Anki imports.
 
-### 6. Report back
+### 6. Stamp episode metadata (required for the app)
+
+The vocabulary JSON must carry `code`, `show`, `episode_title`, `season`,
+`episode_num`, and `source_url`. Copy them from the transcript sidecar so the
+app can group and label everything:
+
+```sh
+python3 - <<'PY'
+import json, pathlib
+side = json.loads(pathlib.Path('data/transcripts/breaking-bad/s01e01.json').read_text())
+p = pathlib.Path('data/vocab/breaking-bad-s01e01.json')
+words = json.loads(p.read_text())
+for w in words:
+    w.update(code=side['code'], show=side['show'],
+             episode_title=side['title'], season=side['season'],
+             episode_num=side['episode'], source_url=side['source'])
+p.write_text(json.dumps(words, ensure_ascii=False, indent=2))
+PY
+```
+
+Skip this only if the user explicitly asked for CSV alone.
+
+### 7. Build the mobile app
+
+```sh
+python3 .opencode/skills/tv-english-vocab/scripts/build_app.py --out site
+```
+
+Reads every `data/vocab/*.json` plus its transcript and emits a self-contained
+static site to `site/`: flashcard deck, searchable list, tap-to-look-up
+transcript, and progress stats. It picks up all previously extracted episodes,
+so the deck grows as more are processed.
+
+Useful flags: `--no-script` omits transcripts (much smaller bundle),
+`--generated "<timestamp>"` stamps the build time shown in the app,
+`--show` prints the output tree with file sizes.
+
+Then tell the user `site/index.html` opens directly in any browser, no server
+needed.
+
+### 8. Deploy to GitHub Pages (only when asked)
+
+```sh
+bash .opencode/skills/tv-english-vocab/scripts/deploy_pages.sh
+```
+
+Builds, commits, pushes `site/` to the `gh-pages` branch, and enables Pages.
+Use `--repo owner/name` for an existing repo, `--no-push` to build only.
+
+This publishes to a **public URL** — free GitHub Pages does not support private
+repos. Confirm with the user before the first deploy and before adding any
+episode they would not want public.
+
+### 9. Report back
 
 Tell the user:
 
@@ -119,14 +172,20 @@ Tell the user:
 - the show, episode code, episode title, and source URL
 - the 5 most useful or interesting items, inline, so they can start studying
   without opening the file
+- that the app is at `site/index.html`, or the live URL if deployed
 
 Then offer the obvious follow-up: the next episode, or a merged master
 vocabulary.
 
 ## Notes
 
-- Do not modify `fetch_transcript.py` or `export_vocab.py` during a normal run.
-  If a site layout changes, fix the parser and say what you changed.
+- Do not modify `fetch_transcript.py`, `export_vocab.py`, `build_app.py`, or the
+  files under `web/` during a normal run. If a site layout changes, fix the
+  parser and say what you changed. `build_app.py` also copies `web/` verbatim,
+  so app restyling is an edit to the templates, not to `site/`.
+- `site/` is generated. Never hand-edit it; rebuild instead.
+- After changing `web/assets/app.js` or `sw.js`, bump the `CACHE` constant in
+  `sw.js`. Cache-first means phones keep serving the old build otherwise.
 - Episode scripts on the source site are user-uploaded and sometimes contain
   transcription errors. Quote them as-is and flag real errors in `note`.
 - Vocabulary should come from **this** episode's transcript. Do not pad the

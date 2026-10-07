@@ -88,4 +88,4 @@ gh api -X PUT "repos/$REPO/pages" \
 
 sleep 3
 echo
-echo "Live at: https://$(gh repo view "$REPO" -q .name).github.io/"
+echo "Live at: https://${REPO##*/}.github.io/"
