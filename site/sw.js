@@ -1,5 +1,5 @@
 /* Cache-first service worker so the app works with no connection. */
-const CACHE = "vocab-app-v5";
+const CACHE = "vocab-app-v6";
 const ASSETS = [
   "./",
   "./index.html",
@@ -11,7 +11,19 @@ const ASSETS = [
 ];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE)
+      .then((c) =>
+        // cache: "reload" bypasses the HTTP cache; without it a fresh install
+        // can capture stale assets and then serve them forever.
+        Promise.all(
+          ASSETS.map((url) =>
+            c.add(new Request(url, { cache: "reload" })).catch(() => null)
+          )
+        )
+      )
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", (e) => {
