@@ -34,5 +34,67 @@
     ],
     "cover_file": "succession.jpg",
     "cover_bytes": 18389
+  },
+  "abbott-elementary": {
+    "slug": "abbott-elementary",
+    "show": "Abbott Elementary",
+    "title": "Abbott Elementary",
+    "year": "2021",
+    "genres": [
+      "Comedy"
+    ],
+    "tvmaze": "",
+    "episodes": [
+      "s02e03"
+    ],
+    "cover_file": "abbott-elementary.jpg",
+    "cover_bytes": 28546
+  },
+  "industry": {
+    "slug": "industry",
+    "show": "Industry",
+    "title": "Industry",
+    "year": "2020",
+    "genres": [
+      "Drama"
+    ],
+    "tvmaze": "",
+    "episodes": [
+      "s01e01"
+    ],
+    "cover_file": "industry.jpg",
+    "cover_bytes": 16716
+  },
+  "ted-lasso": {
+    "slug": "ted-lasso",
+    "show": "Ted Lasso",
+    "title": "Ted Lasso",
+    "year": "2020",
+    "genres": [
+      "Drama",
+      "Comedy",
+      "Sports"
+    ],
+    "tvmaze": "",
+    "episodes": [
+      "s01e01"
+    ],
+    "cover_file": "ted-lasso.jpg",
+    "cover_bytes": 26127
+  },
+  "the-morning-show": {
+    "slug": "the-morning-show",
+    "show": "The Morning Show",
+    "title": "The Morning Show",
+    "year": "2019",
+    "genres": [
+      "Drama"
+    ],
+    "tvmaze": "",
+    "episodes": [
+      "s01e01"
+    ],
+    "cover_file": "the-morning-show.jpg",
+    "cover_bytes": 17063
   }
 }
