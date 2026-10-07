@@ -42,8 +42,10 @@ if [[ -z "$REPO" ]]; then
   REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || true)
 fi
 if [[ -z "$REPO" ]]; then
-  REPO=$(gh repo create learn-english --public --source=. --remote=origin \
-           --description "B2-C1 vocabulary mined from TV transcripts" --push)
+  gh repo create learn-english --public --source=. --remote=origin \
+    --description "B2-C1 vocabulary mined from TV transcripts" --push >/dev/null
+  # gh prints a URL here; resolve the canonical owner/name instead.
+  REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
   echo "==> created $REPO"
 else
   git remote get-url origin >/dev/null 2>&1 || git remote add origin "https://github.com/$REPO.git"
@@ -57,6 +59,10 @@ git -c user.name="$(git config user.name || echo opencode)" \
     commit -q -m "Update vocabulary and rebuild app" || echo "    (nothing new to commit)"
 git push -q origin HEAD
 
+# Let git authenticate through the gh helper so no token ever lands in a URL
+# or in an error message.
+gh auth setup-git >/dev/null 2>&1 || true
+
 echo "==> publishing site/ to gh-pages"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
@@ -66,11 +72,12 @@ printf '' > "$TMP/.nojekyll"          # keep Pages from hiding dotfiles
 (
   cd "$TMP"
   git init -q -b gh-pages
+  git remote add origin "https://github.com/$REPO.git"
   git add -A
-  git -c user.name="$(git config user.name || github-actions[bot])" \
-      -c user.email="$(git config user.email || 41898282+github-actions[bot]@users.noreply.github.com)" \
+  git -c user.name="$(git config user.name || github-actions)" \
+      -c user.email="$(git config user.email || github-actions@users.noreply.github.com)" \
       commit -q -m "Deploy $(date '+%Y-%m-%d %H:%M')"
-  git push -q --force "https://x-access-token:$(gh auth token)@github.com/$REPO.git" gh-pages
+  git push -q --force origin gh-pages
 )
 
 echo "==> enabling Pages on gh-pages"
