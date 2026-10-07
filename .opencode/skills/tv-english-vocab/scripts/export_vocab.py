@@ -11,7 +11,6 @@ Input JSON: either a bare list of entries or an object with a "words" list.
         "meaning_cn": "钻空子牟利",
         "meaning_en": "to exploit rules or loopholes for personal gain",
         "level": "C1",
-        "scene": "Walt explains why he is doing it (living room)",
         "quote": "I'm not in the business of breaking the law. I'm game the system.",
         "quote_cn": "我不是干违法的，我是钻规则的空子。",
         "example": "If you game the system like that, eventually it catches up with you.",
@@ -21,7 +20,7 @@ Input JSON: either a bare list of entries or an object with a "words" list.
     ]
 
 Required keys: word, phonetic, pos, meaning_cn, meaning_en, level.
-Optional: scene, quote, quote_cn, example, example_cn, note.
+Optional: quote, quote_cn, example, example_cn, note.
 
 Usage
 -----
@@ -49,7 +48,6 @@ COLUMNS = [
     ("meaning_cn", "释义（中文）"),
     ("quote", "Quote from Episode"),
     ("quote_cn", "台词翻译"),
-    ("scene", "Scene / Context"),
     ("example", "Example Sentence"),
     ("example_cn", "例句翻译"),
     ("note", "Usage Note"),

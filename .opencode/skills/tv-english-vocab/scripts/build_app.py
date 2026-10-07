@@ -215,7 +215,6 @@ def build_episodes(
                 "example": w.get("example", ""),
                 "example_cn": w.get("example_cn", ""),
                 "note": w.get("note", ""),
-                "scene": w.get("scene", ""),
                 "episodeKey": ekey,
                 "episodeTitle": w.get("episode_title") or side.get("title") or "",
             }

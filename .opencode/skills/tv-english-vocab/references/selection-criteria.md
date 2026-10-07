@@ -22,7 +22,8 @@ Read this before picking words. The goal is words an intermediate learner does
 - Function words and grammar glue: `actually`, `kind of`, `you know`, `I mean`
 - Anything a B1 learner already covers unless the show uses it in an
   unfamiliar register: skip bare `hospital`, `angry`, `run away`
-- Proper nouns of characters and places (name them in `scene`, not as entries)
+- Proper nouns of characters and places (mention them in `note` if the context
+  matters, never as entries)
 - Slurs and profanity used purely as shock value, unless the word itself is
   the interesting unit and you note that it is offensive
 - Single-use stage directions, unless they contain a learnable chunk
@@ -51,7 +52,6 @@ roughly 60/40 B2 to C1.
   (`钻空子牟利` not just `操纵`).
 - `quote` — copy from the transcript. If the transcript line looks like a
   subtitle error, quote it anyway and flag it in `note`.
-- `scene` — who is speaking and where, short, e.g. `Walt to Skyler, kitchen`.
 - `example` — **not** the quote again. A fresh sentence showing typical use,
   ideally a different context from the show.
 - `note` — the thing that makes this item worth learning: a common

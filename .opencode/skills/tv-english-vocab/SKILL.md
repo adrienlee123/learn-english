@@ -77,7 +77,6 @@ Save to `data/vocab/<show>-<code>.json` as a JSON list:
     "meaning_cn": "过度消耗精力；起早贪黑",
     "quote": "Listen, Walt, you're burning the candle at both ends.",
     "quote_cn": "听着，沃尔特，你这样把自己耗得太狠了。",
-    "scene": "Skyler to Walt, kitchen",
     "example": "If you burn the candle at both ends like this, you'll burn out by thirty.",
     "example_cn": "你要是这样两头烧，三十岁就熬垮了。",
     "note": "近义：overextend oneself。show 中为口语化劝告，非字面蜡烛。"
@@ -86,8 +85,10 @@ Save to `data/vocab/<show>-<code>.json` as a JSON list:
 ```
 
 Required: `word`, `phonetic`, `pos`, `meaning_cn`, `meaning_en`, `level`.
-Recommended: `quote`, `quote_cn`, `scene`, `example`, `example_cn`, `note`.
+Recommended: `quote`, `quote_cn`, `example`, `example_cn`, `note`.
 `level` must be exactly `B2` or `C1`.
+Do not add `scene` or a "who/where" field — it was removed from the CSV and the
+app on purpose, because it duplicated what the quote already conveys.
 
 ### 6. Verify and stamp episode metadata
 

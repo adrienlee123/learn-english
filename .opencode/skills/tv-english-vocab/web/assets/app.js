@@ -263,10 +263,6 @@
         '<div class="fc-label">例句</div><div class="fc-example">' + esc(w.example) + "</div>" +
         (w.example_cn ? '<div class="fc-example-cn">' + esc(w.example_cn) + "</div>" : "")));
     }
-    if (w.scene) {
-      back.appendChild(el("div", "fc-row",
-        '<div class="fc-label">场景</div><div class="fc-example-cn">' + esc(w.scene) + "</div>"));
-    }
     if (w.note) {
       back.appendChild(el("div", "fc-row",
         '<div class="fc-label">用法提示</div><div class="fc-note">' + esc(w.note) + "</div>"));
