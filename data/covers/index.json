@@ -1,0 +1,38 @@
+{
+  "breaking-bad": {
+    "slug": "breaking-bad",
+    "show": "Breaking Bad",
+    "title": "Breaking Bad",
+    "year": "2008",
+    "genres": [
+      "Drama",
+      "Crime",
+      "Thriller"
+    ],
+    "tvmaze": "",
+    "episodes": [
+      "s01e01",
+      "s01e02",
+      "s01e03",
+      "s02e01"
+    ],
+    "cover_file": "breaking-bad.jpg",
+    "cover_bytes": 19465
+  },
+  "succession": {
+    "slug": "succession",
+    "show": "succession",
+    "title": "Succession",
+    "year": "2018",
+    "genres": [
+      "Drama",
+      "Family"
+    ],
+    "tvmaze": "",
+    "episodes": [
+      "s01e01"
+    ],
+    "cover_file": "succession.jpg",
+    "cover_bytes": 18389
+  }
+}

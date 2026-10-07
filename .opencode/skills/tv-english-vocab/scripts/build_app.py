@@ -81,8 +81,13 @@ def slug_dir(episode_key: str) -> str:
     return episode_key.split("|")[0]
 
 
+def episode_key(show: str, code: str) -> str:
+    """Globally unique id. Codes repeat across shows: s01e01 is not unique."""
+    return f"{safe_name(show)}|{code}" if show else code
+
+
 def load_sidecars(transcript_dir: Path) -> dict:
-    """Episode metadata written by fetch_transcript.py, keyed by SxxExx code."""
+    """Episode metadata written by fetch_transcript.py, keyed by show_slug|code."""
     out: dict[str, dict] = {}
     if not transcript_dir.exists():
         return out
@@ -92,7 +97,7 @@ def load_sidecars(transcript_dir: Path) -> dict:
         except json.JSONDecodeError:
             continue
         if d.get("code"):
-            out[d["code"]] = d
+            out[episode_key(d.get("show", ""), d["code"])] = d
     return out
 
 
@@ -112,8 +117,33 @@ def load_vocab(vocab_dir: Path) -> list[dict]:
     return out
 
 
+def load_shows(cover_dir: Path) -> dict:
+    """Show metadata + local cover paths from fetch_show_meta.py, keyed by slug."""
+    p = cover_dir / "index.json"
+    if not p.exists():
+        return {}
+    try:
+        raw = json.loads(p.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    out = {}
+    for slug, meta in raw.items():
+        cover_file = meta.get("cover_file")
+        out[slug] = {
+            "slug": slug,
+            "title": meta.get("title") or slug,
+            "year": meta.get("year", ""),
+            "genres": meta.get("genres", []),
+            "tvmaze": meta.get("tvmaze", ""),
+            "episodes": meta.get("episodes", []),
+            # Relative so the site works from a subpath on GitHub Pages.
+            "cover": f"covers/{cover_file}" if cover_file else "",
+        }
+    return out
+
+
 def build_episodes(
-    words: list[dict], transcript_dir: Path, with_script: bool
+    words: list[dict], transcript_dir: Path, with_script: bool, shows: dict
 ) -> tuple[list, list]:
     episodes: list[dict] = []
     flat: list[dict] = []
@@ -122,22 +152,28 @@ def build_episodes(
 
     for w in words:
         code = w.get("code") or w.get("episode_code") or ""
-        if not code or code in seen:
+        show = w.get("show") or ""
+        if not code or not show:
             continue
-        seen.add(code)
+        ekey = episode_key(show, code)
+        if ekey in seen:
+            continue
+        seen.add(ekey)
 
-        side = meta_by_code.get(code, {})
-        show = w.get("show") or side.get("show") or ""
+        side = meta_by_code.get(ekey, {})
         ep_title = w.get("episode_title") or side.get("title") or ""
         season = w.get("season", side.get("season"))
         ep_num = w.get("episode_num", side.get("episode"))
+        show_slug = safe_name(show)
 
         label = " · ".join(x for x in (show, ep_title or code) if x) or code
         ep = {
-            "key": code,
+            "key": ekey,
             "code": code,
             "show": show,
+            "showSlug": show_slug,
             "title": label,
+            "epTitle": ep_title,
             "short": (show + " " + code).strip() if show else code,
             "season": season,
             "episode": ep_num,
@@ -145,7 +181,9 @@ def build_episodes(
             "lines": [],
         }
         if with_script:
-            for cand in (slug_dir(code), safe_name(show)):
+            for cand in (show_slug, slug_dir(code)):
+                if not cand:
+                    continue
                 tp = transcript_dir / cand / f"{code}.txt"
                 if tp.exists():
                     lines = tp.read_text(encoding="utf-8").split("\n")
@@ -156,13 +194,15 @@ def build_episodes(
     # Ensure every word carries the fields the UI expects.
     for w in words:
         code = w.get("code") or w.get("episode_code") or ""
+        show = w.get("show") or ""
         head = w.get("word", "").strip()
-        if not code or not head:
+        if not code or not show or not head:
             continue
-        side = meta_by_code.get(code, {})
+        ekey = episode_key(show, code)
+        side = meta_by_code.get(ekey, {})
         flat.append(
             {
-                "key": f"{code}|{head.lower()}",
+                "key": f"{ekey}|{head.lower()}",
                 "word": head,
                 "lemma": lemma(head),
                 "phonetic": w.get("phonetic", ""),
@@ -176,14 +216,14 @@ def build_episodes(
                 "example_cn": w.get("example_cn", ""),
                 "note": w.get("note", ""),
                 "scene": w.get("scene", ""),
-                "episodeKey": code,
+                "episodeKey": ekey,
                 "episodeTitle": w.get("episode_title") or side.get("title") or "",
             }
         )
     return episodes, flat
 
 
-def write_site(out: Path, payload: dict, with_script: bool) -> None:
+def write_site(out: Path, payload: dict, with_script: bool, covers: Path) -> None:
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
@@ -195,6 +235,14 @@ def write_site(out: Path, payload: dict, with_script: bool) -> None:
     if with_script:
         shutil.copy2(WEB / "sw.js", out / "sw.js")
 
+    # Covers are bundled locally so the app stays fully offline.
+    have = {p.name for p in covers.glob("*.jpg")} if covers.exists() else set()
+    if have:
+        dest = out / "covers"
+        dest.mkdir()
+        for p in sorted(covers.glob("*.jpg")):
+            shutil.copy2(p, dest / p.name)
+
     (out / "assets" / "data.js").write_text(
         "window.VOCAB_DB = " + json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + ";\n",
         encoding="utf-8",
@@ -205,6 +253,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Build the static study app.")
     ap.add_argument("--vocab-dir", type=Path, default=DEFAULT_VOCAB_DIR)
     ap.add_argument("--transcript-dir", type=Path, default=DEFAULT_TRANSCRIPT_DIR)
+    ap.add_argument("--cover-dir", type=Path, default=Path("data/covers"))
     ap.add_argument("--out", type=Path, default=Path("site"))
     ap.add_argument("--no-script", action="store_true", help="omit transcripts")
     ap.add_argument("--generated", default="", help="timestamp string stored in the app")
@@ -220,26 +269,30 @@ def main() -> int:
         )
         return 1
 
-    episodes, flat = build_episodes(words, args.transcript_dir, not args.no_script)
+    shows = load_shows(args.cover_dir)
+    episodes, flat = build_episodes(words, args.transcript_dir, not args.no_script, shows)
     if not flat:
         print("error: vocabulary entries lack 'code'/'word' fields", file=sys.stderr)
         return 1
 
     payload = {
         "generated": args.generated or None,
+        "shows": shows,
         "episodes": episodes,
         "words": flat,
     }
-    write_site(args.out, payload, not args.no_script)
+    write_site(args.out, payload, not args.no_script, args.cover_dir)
 
     script_lines = sum(len(ep["lines"]) for ep in episodes)
     print(
         json.dumps(
             {
                 "output": str(args.out),
+                "shows": len(shows),
                 "words": len(flat),
                 "episodes": len(episodes),
                 "transcript_lines": script_lines,
+                "covers": sum(1 for s in shows.values() if s.get("cover")),
                 "total_bytes": sum(f.stat().st_size for f in args.out.rglob("*") if f.is_file()),
             },
             ensure_ascii=False,

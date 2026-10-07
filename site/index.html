@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="assets/app.css">
 </head>
 <body>
-<div id="app" data-view="cards">
+<div id="app" data-view="library">
   <header class="topbar">
     <div class="topbar-row">
       <h1 class="brand">美剧生词本</h1>
@@ -23,14 +23,19 @@
       </button>
     </div>
     <nav class="tabs" role="tablist">
-      <button class="tab is-active" data-tab="cards" role="tab">卡片</button>
+      <button class="tab is-active" data-tab="library" role="tab">选集</button>
+      <button class="tab" data-tab="cards" role="tab">卡片</button>
       <button class="tab" data-tab="list" role="tab">词表</button>
-      <button class="tab" data-tab="script" role="tab">剧集原文</button>
+      <button class="tab" data-tab="script" role="tab">原文</button>
       <button class="tab" data-tab="stats" role="tab">进度</button>
     </nav>
   </header>
 
-  <section id="view-cards" class="view is-active">
+  <section id="view-library" class="view is-active">
+    <div id="library-body" class="library-body"></div>
+  </section>
+
+  <section id="view-cards" class="view">
     <div class="toolbar">
       <select id="filter-episode" class="select" aria-label="选择剧集"></select>
       <select id="filter-level" class="select" aria-label="按级别筛选">

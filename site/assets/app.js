@@ -11,7 +11,7 @@
       var raw = localStorage.getItem(KEY);
       if (raw) return JSON.parse(raw);
     } catch (e) { /* private mode or corrupt value */ }
-    return { status: {}, theme: null, idx: 0 };
+    return { status: {}, theme: null, idx: 0, ep: null };
   }
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* quota or private mode */ }
@@ -72,10 +72,130 @@
     }).join("");
     $("#filter-episode").innerHTML = '<option value="">全部剧集</option>' + opts;
     $("#script-episode").innerHTML = opts;
-    if (DB.episodes.length) {
-      $("#filter-episode").value = DB.episodes[0].key;
-      $("#script-episode").value = DB.episodes[0].key;
+  }
+
+  // One selection drives every view; stored so the app reopens on the same episode.
+  function currentEpisode() {
+    var v = S.ep || "";
+    if (v && byEpisode[v]) return v;
+    return DB.episodes.length ? DB.episodes[0].key : "";
+  }
+
+  function selectEpisode(key) {
+    if (!byEpisode[key]) return;
+    S.ep = key; S.idx = 0; pos = 0;
+    save();
+    $("#filter-episode").value = key;
+    $("#script-episode").value = key;
+    reloadDeck(); renderList(); renderScript(); renderStats(); markActiveEpCards();
+  }
+
+  /* ---------- library / episode picker ---------- */
+  function renderLibrary() {
+    var body = $("#library-body");
+    body.innerHTML = "";
+    if (!DB.episodes.length) {
+      body.appendChild(el("div", "empty", "还没有剧集。<br>先用 skill 提取一集，这里就会出现选集界面。"));
+      return;
     }
+
+    // Group episodes by show, preserving first-seen order.
+    var groups = {}, order = [];
+    DB.episodes.forEach(function (ep) {
+      var g = ep.show || "其他";
+      if (!groups[g]) { groups[g] = []; order.push(g); }
+      groups[g].push(ep);
+    });
+
+    order.forEach(function (g) {
+      var eps = groups[g];
+      var meta = null;
+      for (var i = 0; i < eps.length; i++) {
+        var cand = eps[i].showSlug && DB.shows[eps[i].showSlug];
+        if (cand) { meta = cand; break; }
+      }
+
+      var sec = el("div", "show-sec");
+      var head = el("div", "show-head");
+      if (meta && meta.cover) {
+        var th = el("img", "show-thumb");
+        th.alt = meta.title || g;
+        th.decoding = "async";
+        // Insert first, then assign src: assigning before insertion can leave
+        // the image pending forever in some engines.
+        head.appendChild(th);
+        th.src = meta.cover;
+      }
+      var wc = 0;
+      eps.forEach(function (e) {
+        wc += DB.words.filter(function (w) { return w.episodeKey === e.key; }).length;
+      });
+      var sub = [meta && meta.year, meta && (meta.genres || []).slice(0, 3).join(" · ")]
+        .filter(Boolean).join(" · ");
+      head.appendChild(el("div", "show-meta",
+        '<h2 class="show-title">' + esc((meta && meta.title) || g) + "</h2>" +
+        (sub ? '<div class="show-sub">' + esc(sub) + "</div>" : "")));
+      head.appendChild(el("div", "show-count", eps.length + " 集<br>" + wc + " 词"));
+      sec.appendChild(head);
+
+      var grid = el("div", "ep-grid");
+      eps.forEach(function (ep) { grid.appendChild(epCard(ep, meta)); });
+      sec.appendChild(grid);
+      body.appendChild(sec);
+    });
+
+    markActiveEpCards();
+  }
+
+  function epCard(ep, meta) {
+    var ws = DB.words.filter(function (w) { return w.episodeKey === ep.key; });
+    var done = ws.filter(function (w) { return statusOf(keyFor(w)) === "mastered"; }).length;
+    var pct = ws.length ? Math.round((done / ws.length) * 100) : 0;
+
+    var btn = el("button", "ep-card");
+    btn.setAttribute("data-ep", ep.key);
+
+    var art = el("div", "ep-art");
+    if (meta && meta.cover) {
+      var img = el("img");
+      img.alt = "";
+      img.decoding = "async";
+      art.appendChild(img);
+      img.src = meta.cover;
+    }
+    art.appendChild(el("div", "ep-scrim"));
+    art.appendChild(el("div", "ep-code", ep.code.toUpperCase()));
+    var foot = el("div", "ep-foot", ws.length && done === ws.length ? "✓" : String(done));
+    if (ws.length && done === ws.length) foot.className = "ep-foot done";
+    art.appendChild(foot);
+    art.appendChild(el("div", "ep-title", ep.epTitle || ep.title || ep.code));
+
+    btn.appendChild(art);
+    btn.appendChild(el("div", "ep-bar", "<i style='width:" + pct + "%'></i>"));
+
+    btn.addEventListener("click", function () {
+      selectEpisode(ep.key);
+      showTab("cards");
+    });
+    return btn;
+  }
+
+  function markActiveEpCards() {
+    var cur = currentEpisode();
+    $$(".ep-card").forEach(function (c) {
+      c.classList.toggle("is-active", c.getAttribute("data-ep") === cur);
+    });
+  }
+
+  function showTab(name) {
+    $$(".tab").forEach(function (x) { x.classList.toggle("is-active", x.dataset.tab === name); });
+    $$(".view").forEach(function (v) { v.classList.remove("is-active"); });
+    $("#view-" + name).classList.add("is-active");
+    $("#app").dataset.view = name;
+    if (name === "library") renderLibrary();
+    if (name === "list") renderList();
+    if (name === "script") renderScript();
+    if (name === "stats") renderStats();
   }
 
   function deck() {
@@ -200,9 +320,18 @@
     if (pos < 0) pos = 0;
     renderCard();
   }
-  ["#filter-episode", "#filter-level", "#filter-status"].forEach(function (sel) {
-    $(sel).addEventListener("change", function () { pos = 0; reloadDeck(); });
+  $("#filter-episode").addEventListener("change", function () {
+    // Picking from the dropdown is also a selection; keep the library in sync.
+    var v = this.value;
+    if (v) {
+      S.ep = v; S.idx = 0; pos = 0; save();
+      $("#script-episode").value = v;
+      markActiveEpCards();
+    }
+    reloadDeck();
   });
+  $("#filter-level").addEventListener("change", function () { pos = 0; reloadDeck(); });
+  $("#filter-status").addEventListener("change", function () { pos = 0; reloadDeck(); });
 
   /* ---------- list ---------- */
   $("#search").addEventListener("input", renderList);
@@ -309,7 +438,15 @@
       });
     }
   }
-  $("#script-episode").addEventListener("change", renderScript);
+  $("#script-episode").addEventListener("change", function () {
+    var v = this.value;
+    if (v) {
+      S.ep = v; save();
+      $("#filter-episode").value = v;
+      markActiveEpCards();
+    }
+    renderScript();
+  });
   $("#script-tap").addEventListener("change", renderScript);
 
   /* ---------- sheet ---------- */
@@ -423,15 +560,7 @@
 
   /* ---------- tabs ---------- */
   $$(".tab").forEach(function (t) {
-    t.addEventListener("click", function () {
-      $$(".tab").forEach(function (x) { x.classList.toggle("is-active", x === t); });
-      $$(".view").forEach(function (v) { v.classList.remove("is-active"); });
-      $("#view-" + t.dataset.tab).classList.add("is-active");
-      $("#app").dataset.view = t.dataset.tab;
-      if (t.dataset.tab === "list") renderList();
-      if (t.dataset.tab === "script") renderScript();
-      if (t.dataset.tab === "stats") renderStats();
-    });
+    t.addEventListener("click", function () { showTab(t.dataset.tab); });
   });
 
   /* ---------- swipe on card ---------- */
@@ -470,9 +599,16 @@
   /* ---------- init ---------- */
   applyTheme();
   fillEpisodeSelects();
+  var start = currentEpisode();
+  if (start) {
+    S.ep = start;
+    $("#filter-episode").value = start;
+    $("#script-episode").value = start;
+  }
   reloadDeck();
   renderList();
   renderScript();
+  renderLibrary();
 
   if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
     navigator.serviceWorker.register("sw.js").catch(function () { /* offline cache unavailable */ });

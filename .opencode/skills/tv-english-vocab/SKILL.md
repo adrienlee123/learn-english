@@ -89,7 +89,24 @@ Required: `word`, `phonetic`, `pos`, `meaning_cn`, `meaning_en`, `level`.
 Recommended: `quote`, `quote_cn`, `scene`, `example`, `example_cn`, `note`.
 `level` must be exactly `B2` or `C1`.
 
-### 5. Export to CSV
+### 6. Verify and stamp episode metadata
+
+```sh
+python3 .opencode/skills/tv-english-vocab/scripts/stamp_and_verify.py
+```
+
+This is the gate between extraction and export. It
+
+- checks every `quote` appears **verbatim** in that episode's transcript,
+- rejects levels other than B2/C1,
+- fills `code`, `show`, `show_slug`, `episode_title`, `season`, `episode_num`,
+  and `source_url` from the transcript sidecar.
+
+Do not proceed if it reports problems — fix the offending entries instead.
+Quote matching is exact and case-sensitive, and a transcript may split a line
+mid-sentence, so shorten the quote rather than relaxing the check.
+
+### 7. Export to CSV
 
 ```sh
 python3 .opencode/skills/tv-english-vocab/scripts/export_vocab.py \
@@ -110,38 +127,27 @@ python3 .opencode/skills/tv-english-vocab/scripts/export_vocab.py \
 Matching is case-insensitive on `word`, so re-running the same episode does not
 create duplicates. `--tsv` writes tab-separated instead, for Anki imports.
 
-### 6. Stamp episode metadata (required for the app)
-
-The vocabulary JSON must carry `code`, `show`, `episode_title`, `season`,
-`episode_num`, and `source_url`. Copy them from the transcript sidecar so the
-app can group and label everything:
+### 8. Fetch show covers
 
 ```sh
-python3 - <<'PY'
-import json, pathlib
-side = json.loads(pathlib.Path('data/transcripts/breaking-bad/s01e01.json').read_text())
-p = pathlib.Path('data/vocab/breaking-bad-s01e01.json')
-words = json.loads(p.read_text())
-for w in words:
-    w.update(code=side['code'], show=side['show'],
-             episode_title=side['title'], season=side['season'],
-             episode_num=side['episode'], source_url=side['source'])
-p.write_text(json.dumps(words, ensure_ascii=False, indent=2))
-PY
+python3 .opencode/skills/tv-english-vocab/scripts/fetch_show_meta.py
 ```
 
-Skip this only if the user explicitly asked for CSV alone.
+Resolves each show against TVmaze (no API key needed), downloads a portrait
+cover into `data/covers/`, and writes `data/covers/index.json`. The app needs
+this for the episode-picker screen. `--refresh` re-downloads, `--dry-run` only
+reports matches.
 
-### 7. Build the mobile app
+### 9. Build the mobile app
 
 ```sh
 python3 .opencode/skills/tv-english-vocab/scripts/build_app.py --out site
 ```
 
-Reads every `data/vocab/*.json` plus its transcript and emits a self-contained
-static site to `site/`: flashcard deck, searchable list, tap-to-look-up
-transcript, and progress stats. It picks up all previously extracted episodes,
-so the deck grows as more are processed.
+Reads every `data/vocab/*.json` plus its transcript and cover, then emits a
+self-contained static site to `site/`: an episode-picker library, flashcard
+deck, searchable list, tap-to-look-up transcript, and progress stats. It picks
+up all previously extracted episodes, so the library grows as more are added.
 
 Useful flags: `--no-script` omits transcripts (much smaller bundle),
 `--generated "<timestamp>"` stamps the build time shown in the app,
@@ -150,7 +156,7 @@ Useful flags: `--no-script` omits transcripts (much smaller bundle),
 Then tell the user `site/index.html` opens directly in any browser, no server
 needed.
 
-### 8. Deploy to GitHub Pages (only when asked)
+### 10. Deploy to GitHub Pages (only when asked)
 
 ```sh
 bash .opencode/skills/tv-english-vocab/scripts/deploy_pages.sh
@@ -163,7 +169,7 @@ This publishes to a **public URL** — free GitHub Pages does not support privat
 repos. Confirm with the user before the first deploy and before adding any
 episode they would not want public.
 
-### 9. Report back
+### 11. Report back
 
 Tell the user:
 
@@ -179,13 +185,18 @@ vocabulary.
 
 ## Notes
 
-- Do not modify `fetch_transcript.py`, `export_vocab.py`, `build_app.py`, or the
-  files under `web/` during a normal run. If a site layout changes, fix the
-  parser and say what you changed. `build_app.py` also copies `web/` verbatim,
-  so app restyling is an edit to the templates, not to `site/`.
+- Do not modify the scripts or the files under `web/` during a normal run. If a
+  site layout changes, fix the parser and say what you changed. `build_app.py`
+  copies `web/` verbatim, so app restyling is an edit to the templates, never
+  to `site/`.
 - `site/` is generated. Never hand-edit it; rebuild instead.
+- Episode codes are only unique within a show. The canonical key everywhere is
+  `show_slug|sXXEYY`; never key data on the bare code, or two shows' `s01e01`
+  will silently overwrite each other.
 - After changing `web/assets/app.js` or `sw.js`, bump the `CACHE` constant in
   `sw.js`. Cache-first means phones keep serving the old build otherwise.
+- Set an image's `src` only after inserting it into the document. Assigning
+  first can leave the image pending forever in some engines.
 - Episode scripts on the source site are user-uploaded and sometimes contain
   transcription errors. Quote them as-is and flag real errors in `note`.
 - Vocabulary should come from **this** episode's transcript. Do not pad the

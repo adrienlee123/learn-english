@@ -197,6 +197,72 @@ body {
 
 .empty { text-align: center; color: var(--fg-faint); padding: 40px 20px; font-size: 14.5px; }
 
+/* ---------- library / episode picker ---------- */
+.library-body { display: grid; gap: 26px; }
+
+.show-head { display: flex; gap: 13px; align-items: flex-end; margin-bottom: 12px; }
+.show-thumb {
+  width: 62px; height: auto; aspect-ratio: 2 / 3;
+  border-radius: 9px; object-fit: cover; flex: 0 0 auto;
+  background: var(--bg-soft);
+  box-shadow: 0 2px 10px rgba(0,0,0,.35);
+}
+.show-meta { flex: 1; min-width: 0; padding-bottom: 2px; }
+.show-title { margin: 0 0 3px; font-size: 18.5px; font-weight: 680; letter-spacing: -.2px; }
+.show-sub { font-size: 12.5px; color: var(--fg-dim); }
+.show-count { font-size: 12.5px; color: var(--fg-faint); white-space: nowrap; }
+
+.ep-grid {
+  display: grid; gap: 11px;
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+}
+.ep-card {
+  position: relative; display: block; width: 100%; padding: 0;
+  border: 1px solid var(--line); border-radius: 11px; overflow: hidden;
+  background: var(--bg-elev); cursor: pointer; text-align: left;
+}
+.ep-card:active { transform: scale(.975); }
+.ep-art {
+  position: relative; aspect-ratio: 2 / 3; overflow: hidden;
+  background: var(--bg-soft);
+}
+.ep-art img {
+  width: 100%; height: 100%; object-fit: cover;
+  opacity: .42; transition: opacity .2s;
+}
+.ep-card:hover .ep-art img, .ep-card.is-active .ep-art img { opacity: .58; }
+.ep-scrim {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,.42) 0%, rgba(0,0,0,.05) 34%, rgba(0,0,0,.74) 100%);
+}
+.ep-code {
+  position: absolute; top: 7px; left: 8px;
+  padding: 2.5px 7px; border-radius: 6px;
+  background: rgba(0,0,0,.62); color: #fff;
+  font-size: 11px; font-weight: 700; letter-spacing: .4px;
+  font-variant-numeric: tabular-nums;
+}
+.ep-title {
+  position: absolute; left: 9px; right: 9px; bottom: 8px;
+  font-size: 12.5px; font-weight: 600; line-height: 1.35; color: #fff;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ep-foot {
+  position: absolute; top: 7px; right: 8px;
+  width: 19px; height: 19px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(0,0,0,.62); color: #fff;
+  font-size: 10.5px; font-weight: 700;
+}
+.ep-foot.done { background: var(--b2); color: #06231b; }
+.ep-bar {
+  position: relative; height: 3px; background: var(--bg-soft);
+}
+.ep-bar > i { position: absolute; inset: 0 auto 0 0; background: var(--b2); border-radius: 0 3px 3px 0; }
+.ep-card.is-active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.ep-card.is-active .ep-foot { background: var(--accent); color: #fff; }
+
 /* ---------- word list ---------- */
 .word-list { list-style: none; margin: 0; padding: 0; }
 .word-item {
