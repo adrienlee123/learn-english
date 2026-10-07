@@ -52,16 +52,41 @@ else
   echo "==> using existing $REPO"
 fi
 
+# Prefer SSH: on some networks github.com over HTTPS is unreachable even while
+# api.github.com and git@github.com still work.
+if ! curl -fsS -o /dev/null -m 10 https://github.com 2>/dev/null; then
+  if ssh -o BatchMode=yes -o ConnectTimeout=10 -T git@github.com >/dev/null 2>&1; then
+    echo "==> HTTPS to github.com unavailable; using SSH"
+    git remote set-url origin "git@github.com:$REPO.git"
+  fi
+fi
+
+# GitHub's receive service occasionally returns 500; retry before giving up.
+push_with_retry() {
+  local remote="$1" ref="$2" n=1 max=4
+  while :; do
+    if git push -q --force "$remote" "$ref" 2>/tmp/_push.err; then return 0; fi
+    if (( n >= max )); then
+      echo "    push failed after $n attempts:" >&2
+      tail -2 /tmp/_push.err >&2
+      return 1
+    fi
+    echo "    push attempt $n failed, retrying..." >&2
+    sleep $((n * 15))
+    n=$((n + 1))
+  done
+}
+
+# Let git authenticate through the gh helper so no token lands in a URL or log.
+gh auth setup-git >/dev/null 2>&1 || true
+
 echo "==> pushing main"
 git add -A
-git -c user.name="$(git config user.name || echo opencode)" \
-    -c user.email="$(git config user.email || echo opencode@local)" \
+git -c user.name="$(git config user.name || opencode)" \
+    -c user.email="$(git config user.email || opencode@local)" \
     commit -q -m "Update vocabulary and rebuild app" || echo "    (nothing new to commit)"
-git push -q origin HEAD
-
-# Let git authenticate through the gh helper so no token ever lands in a URL
-# or in an error message.
-gh auth setup-git >/dev/null 2>&1 || true
+# Non-fatal: the site can still be published if the source push is rejected.
+push_with_retry origin HEAD || echo "    continuing: gh-pages is what serves the site"
 
 echo "==> publishing site/ to gh-pages"
 TMP=$(mktemp -d)
@@ -72,12 +97,12 @@ printf '' > "$TMP/.nojekyll"          # keep Pages from hiding dotfiles
 (
   cd "$TMP"
   git init -q -b gh-pages
-  git remote add origin "https://github.com/$REPO.git"
+  git remote add origin "git@github.com:$REPO.git"
   git add -A
   git -c user.name="$(git config user.name || github-actions)" \
       -c user.email="$(git config user.email || github-actions@users.noreply.github.com)" \
       commit -q -m "Deploy $(date '+%Y-%m-%d %H:%M')"
-  git push -q --force origin gh-pages
+  push_with_retry origin gh-pages
 )
 
 echo "==> enabling Pages on gh-pages"
