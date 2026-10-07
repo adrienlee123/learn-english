@@ -120,6 +120,14 @@ def merge_into(existing: Path, rows: list[dict], delimiter: str) -> tuple[list[d
     label_to_key = {label: key for key, label in COLUMNS}
     keys = [label_to_key.get(cell.strip(), cell.strip()) for cell in header]
 
+    # Refuse to merge into a file we do not recognise: treating a data row as a
+    # header would silently drop every column.
+    if "word" not in keys:
+        raise SystemExit(
+            f"{existing}: header does not look like a vocabulary export "
+            f"(missing 'Word / Phrase'). Merge into a file created by this script."
+        )
+
     current = [dict(zip(keys, rec)) for rec in body]
     seen = {r.get("word", "").strip().lower() for r in current}
 
@@ -154,14 +162,14 @@ def main() -> int:
         out = args.merge
 
     out.parent.mkdir(parents=True, exist_ok=True)
-    # Decide before opening: opening in "w" truncates, so st_size would read 0.
-    need_header = not out.exists() or out.stat().st_size == 0
 
     # utf-8-sig so Excel on Windows/macOS shows Chinese text correctly.
+    # A merge rewrites the whole file from `rows`, so the header is always
+    # re-emitted. Omitting it here used to corrupt the *next* merge, which then
+    # read a data row as the header and blanked every column.
     with out.open("w", encoding="utf-8-sig", newline="") as fh:
         writer = csv.writer(fh, delimiter=delimiter, quoting=csv.QUOTE_MINIMAL)
-        if need_header:
-            writer.writerow([label for _, label in COLUMNS])
+        writer.writerow([label for _, label in COLUMNS])
         for row in rows:
             writer.writerow([row.get(key, "") for key, _ in COLUMNS])
 
