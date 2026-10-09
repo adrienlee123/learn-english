@@ -43,6 +43,8 @@ KNOWN_OVERFIRES = [
     "not as far as I know",
     "this is going down the toilet",
     "take it back to the counter",
+    "nudge something in the right direction",
+    "have them by the short hairs",
 ]
 
 

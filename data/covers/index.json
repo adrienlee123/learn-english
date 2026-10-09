@@ -45,6 +45,7 @@
     ],
     "tvmaze": "",
     "episodes": [
+      "s01e01",
       "s02e03"
     ],
     "cover_file": "abbott-elementary.jpg",
@@ -60,7 +61,8 @@
     ],
     "tvmaze": "",
     "episodes": [
-      "s01e01"
+      "s01e01",
+      "s01e02"
     ],
     "cover_file": "industry.jpg",
     "cover_bytes": 16716
@@ -77,7 +79,8 @@
     ],
     "tvmaze": "",
     "episodes": [
-      "s01e01"
+      "s01e01",
+      "s01e02"
     ],
     "cover_file": "ted-lasso.jpg",
     "cover_bytes": 26127
@@ -92,9 +95,40 @@
     ],
     "tvmaze": "",
     "episodes": [
-      "s01e01"
+      "s01e01",
+      "s01e02"
     ],
     "cover_file": "the-morning-show.jpg",
     "cover_bytes": 17063
+  },
+  "silicon-valley": {
+    "slug": "silicon-valley",
+    "show": "Silicon Valley",
+    "title": "Silicon Valley",
+    "year": "2014",
+    "genres": [
+      "Comedy"
+    ],
+    "tvmaze": "",
+    "episodes": [
+      "s01e01"
+    ],
+    "cover_file": "silicon-valley.jpg",
+    "cover_bytes": 19630
+  },
+  "superstore": {
+    "slug": "superstore",
+    "show": "Superstore",
+    "title": "Superstore",
+    "year": "2015",
+    "genres": [
+      "Comedy"
+    ],
+    "tvmaze": "",
+    "episodes": [
+      "s01e01"
+    ],
+    "cover_file": "superstore.jpg",
+    "cover_bytes": 23390
   }
 }
