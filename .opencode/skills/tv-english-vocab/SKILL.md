@@ -90,7 +90,7 @@ Recommended: `quote`, `quote_cn`, `example`, `example_cn`, `note`.
 Do not add `scene` or a "who/where" field — it was removed from the CSV and the
 app on purpose, because it duplicated what the quote already conveys.
 
-### 6. Verify and stamp episode metadata
+### 6. Verify, review, and stamp episode metadata
 
 ```sh
 python3 .opencode/skills/tv-english-vocab/scripts/stamp_and_verify.py
@@ -100,12 +100,27 @@ This is the gate between extraction and export. It
 
 - checks every `quote` appears **verbatim** in that episode's transcript,
 - rejects levels other than B2/C1,
+- flags entries whose `word` looks like a pasted **sentence** rather than a
+  storeable chunk, and prints them under "Needs review",
 - fills `code`, `show`, `show_slug`, `episode_title`, `season`, `episode_num`,
   and `source_url` from the transcript sidecar.
 
-Do not proceed if it reports problems — fix the offending entries instead.
-Quote matching is exact and case-sensitive, and a transcript may split a line
-mid-sentence, so shorten the quote rather than relaxing the check.
+**Read every flagged entry and decide.** The check is a heuristic and cannot
+tell a frozen idiom from a real clause, so a pass is not a verdict. For each
+one, keep it only if the expression is usable outside its scene; otherwise fix
+the headword. `my arches happen to be extremely archy` was once stored as a
+word — the learnable item there is `arches`. A `word` field is a **headword**,
+never a quotation: if `word` reads like a line of dialogue, you pasted the
+quote into the wrong field.
+
+Use `--strict` in CI to make review candidates fail the run.
+
+Do not proceed while the quote check reports problems. Quote matching is exact
+and case-sensitive, and a transcript may split a line mid-sentence, so shorten
+the quote rather than relaxing the check.
+
+Regression tests for the checker: `scripts/test_checks.py`. Run them after
+changing it.
 
 ### 7. Export to CSV
 
@@ -191,6 +206,11 @@ vocabulary.
   copies `web/` verbatim, so app restyling is an edit to the templates, never
   to `site/`.
 - `site/` is generated. Never hand-edit it; rebuild instead.
+- **Criteria written after extraction do not retroactively clean the data.**
+  When you tighten `selection-criteria.md`, re-audit everything already
+  extracted, or old bad entries survive indefinitely.
+- Automated checks cannot judge whether a headword is a real chunk; they can
+  only surface candidates. Always read the review list yourself.
 - Episode codes are only unique within a show. The canonical key everywhere is
   `show_slug|sXXEYY`; never key data on the bare code, or two shows' `s01e01`
   will silently overwrite each other.
