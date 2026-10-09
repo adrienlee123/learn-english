@@ -65,6 +65,106 @@
     save(); applyTheme();
   });
 
+  /* ---------- speech ---------- */
+  // OS speech engine: no audio files, no bundle growth, works offline.
+  var TTS = (function () {
+    var supported = typeof window.speechSynthesis !== "undefined" &&
+                    typeof window.SpeechSynthesisUtterance !== "undefined";
+    var voices = [];
+    var picked = null;
+
+    function load() { if (supported) voices = window.speechSynthesis.getVoices() || []; }
+    load();
+    if (supported) {
+      window.speechSynthesis.onvoiceschanged = function () { voices = []; picked = null; load(); };
+    }
+
+    function score(v) {
+      var s = 0;
+      if (/^en[-_]US/i.test(v.lang)) s += 100;
+      else if (/^en[-_]GB/i.test(v.lang)) s += 45;
+      else if (/^en[-_](AU|IE|CA|NZ)/i.test(v.lang)) s += 25;
+      if (/(premium|enhanced|natural|neural|siri|serena|daniel|samantha)/i.test(v.name)) s += 30;
+      if (v.localService) s += 10;
+      return s;
+    }
+
+    function pick() {
+      if (picked) return picked;
+      var en = voices.filter(function (v) { return /^en/i.test(v.lang || ""); });
+      if (!en.length) return null;
+      en.sort(function (a, b) { return score(b) - score(a); });
+      picked = en[0];
+      return picked;
+    }
+
+    // Stage directions are noise in a quote: "[Whispering] Hi" -> "Hi".
+    function clean(text) {
+      return String(text || "")
+        .replace(/\[[^\]]*\]|\([^)]*\)/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function stop() {
+      if (!supported) return;
+      try { window.speechSynthesis.cancel(); } catch (e) { /* ignore */ }
+      $$(".spk.is-playing").forEach(function (n) { n.classList.remove("is-playing"); });
+    }
+
+    function speak(text, btn) {
+      if (!supported) return false;
+      var t = clean(text);
+      if (!t) return false;
+      stop();
+      var u = new SpeechSynthesisUtterance(t);
+      var v = pick();
+      // Some engines hand back voice objects the utterance will not accept.
+      // Fall back to a language hint rather than losing playback entirely.
+      if (v) {
+        try { u.voice = v; } catch (e) { v = null; }
+      }
+      u.lang = (v && v.lang) || "en-US";
+      u.rate = S.slow ? 0.62 : 0.92;
+      u.pitch = 1;
+      if (btn) {
+        btn.classList.add("is-playing");
+        var clear = function () {
+          btn.classList.remove("is-playing");
+          u.onend = null; u.onerror = null;
+        };
+        u.onend = clear;
+        u.onerror = clear;
+      }
+      window.speechSynthesis.speak(u);
+      return true;
+    }
+
+    return { speak: speak, stop: stop, supported: supported };
+  })();
+
+  function speakBtn(text, label) {
+    var b = el("button", label ? "spk-label" : "spk", label ? "🔊 " + label : "🔊");
+    b.setAttribute("aria-label", label ? "朗读" + label : "朗读");
+    b.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      if (!TTS.speak(text, b)) {
+        var n = el("div", "tts-none", "此设备没有可用的英文语音引擎");
+        $("#card-stage").appendChild(n);
+        setTimeout(function () { n.remove(); }, 2600);
+      }
+    });
+    return b;
+  }
+
+  $("#btn-rate").addEventListener("click", function () {
+    S.slow = !S.slow;
+    save();
+    this.textContent = S.slow ? "慢" : "正常";
+    this.classList.toggle("is-on", !!S.slow);
+    TTS.stop();
+  });
+
   /* ---------- filters ---------- */
   function fillEpisodeSelects() {
     var opts = DB.episodes.map(function (ep) {
@@ -237,26 +337,32 @@
     var card = el("div", "flashcard");
 
     var front = el("div", "fc-face fc-front");
-    front.appendChild(el("div", "fc-head",
+    var fhead = el("div", "fc-head",
       '<h2 class="fc-word">' + esc(w.word) + "</h2>" +
-      '<span class="badge badge-' + esc(w.level) + '">' + esc(w.level) + "</span>"));
+      '<span class="badge badge-' + esc(w.level) + '">' + esc(w.level) + "</span>");
+    fhead.appendChild(speakBtn(w.word));
+    front.appendChild(fhead);
     front.appendChild(el("div", "fc-pos", esc(w.pos || "")));
     front.appendChild(el("div", "fc-phon", esc(w.phonetic || "")));
     if (w.meaning_en) front.appendChild(el("div", "fc-row", '<div class="fc-def-en">' + esc(w.meaning_en) + "</div>"));
     front.appendChild(el("div", "fc-hint", "点击卡片或按「看释义」翻转"));
 
     var back = el("div", "fc-face fc-back");
-    back.appendChild(el("div", "fc-head",
+    var bhead = el("div", "fc-head",
       '<h2 class="fc-word">' + esc(w.word) + "</h2>" +
-      '<span class="badge badge-' + esc(w.level) + '">' + esc(w.level) + "</span>"));
+      '<span class="badge badge-' + esc(w.level) + '">' + esc(w.level) + "</span>");
+    bhead.appendChild(speakBtn(w.word));
+    back.appendChild(bhead);
     if (w.meaning_cn) {
       back.appendChild(el("div", "fc-row",
         '<div class="fc-label">中文释义</div><div class="fc-def-cn">' + esc(w.meaning_cn) + "</div>"));
     }
     if (w.quote) {
-      back.appendChild(el("div", "fc-row",
+      var qbox = el("div", "fc-row",
         '<div class="fc-label">剧中台词</div><div class="fc-quote">' + esc(w.quote) + "</div>" +
-        (w.quote_cn ? '<div class="fc-quote-cn">' + esc(w.quote_cn) + "</div>" : "")));
+        (w.quote_cn ? '<div class="fc-quote-cn">' + esc(w.quote_cn) + "</div>" : ""));
+      qbox.appendChild(speakBtn(w.quote, "台词"));
+      back.appendChild(qbox);
     }
     if (w.example) {
       back.appendChild(el("div", "fc-row",
@@ -352,8 +458,11 @@
       var head = el("button", "wi-head",
         '<span class="wi-dot ' + st + '"></span>' +
         '<span class="wi-word">' + esc(w.word) + "</span>" +
-        '<span class="badge badge-' + esc(w.level) + '">' + esc(w.level) + "</span>" +
-        '<span class="wi-chev">›</span>');
+        '<span class="badge badge-' + esc(w.level) + '">' + esc(w.level) + "</span>");
+      var spk = speakBtn(w.word);
+      spk.classList.add("wi-spk");
+      head.appendChild(spk);
+      head.appendChild(el("span", "wi-chev", "›"));
       head.addEventListener("click", function () {
         var open = li.classList.toggle("is-open");
         head.setAttribute("aria-expanded", String(open));
@@ -450,11 +559,17 @@
     var w = wordKey[key];
     if (!w) return;
     var b = $("#sheet-body");
-    b.innerHTML =
-      '<h3 class="sheet-title">' + esc(w.word) + "</h3>" +
-      '<div class="sheet-phon">' + esc(w.phonetic || "") + " · " + esc(w.pos || "") +
-      ' · <span class="badge badge-' + esc(w.level) + '">' + esc(w.level) + "</span></div>" +
-      bodyHtml(w);
+    b.innerHTML = "";
+    var stitle = el("h3", "sheet-title", esc(w.word));
+    var srow = el("div", "sheet-tts");
+    srow.appendChild(speakBtn(w.word));
+    if (w.quote) srow.appendChild(speakBtn(w.quote, "台词"));
+    if (w.example) srow.appendChild(speakBtn(w.example, "例句"));
+    b.appendChild(stitle);
+    b.appendChild(el("div", "sheet-phon", esc(w.phonetic || "") + " · " + esc(w.pos || "") +
+      ' · <span class="badge badge-' + esc(w.level) + '">' + esc(w.level) + "</span>"));
+    b.appendChild(srow);
+    b.appendChild(el("div", null, bodyHtml(w)));
     $("#sheet").hidden = false;
     document.body.style.overflow = "hidden";
   }
@@ -587,6 +702,10 @@
     if (e.key === "ArrowRight") goto(1);
     else if (e.key === "ArrowLeft") goto(-1);
     else if (e.key === " ") { e.preventDefault(); flip(); }
+    else if (e.key === "p" && deckCache[pos]) {
+      var n = $(".fc-front .spk");
+      if (n) n.click();
+    }
     else if (e.key === "1") mark("learning");
     else if (e.key === "2") mark("mastered");
     else if (e.key === "3") { S.status = {}; save(); reloadDeck(); renderList(); renderStats(); }
@@ -594,6 +713,8 @@
 
   /* ---------- init ---------- */
   applyTheme();
+  $("#btn-rate").textContent = S.slow ? "慢" : "正常";
+  $("#btn-rate").classList.toggle("is-on", !!S.slow);
   fillEpisodeSelects();
   var start = currentEpisode();
   if (start) {

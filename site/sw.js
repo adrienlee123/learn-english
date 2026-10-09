@@ -1,5 +1,5 @@
 /* Cache-first service worker so the app works with no connection. */
-const CACHE = "vocab-app-v9";
+const CACHE = "vocab-app-v10";
 const ASSETS = [
   "./",
   "./index.html",

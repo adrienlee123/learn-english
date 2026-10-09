@@ -55,6 +55,15 @@ body {
 }
 .brand { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: .2px; }
 
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
+.rate-btn {
+  min-height: 36px; padding: 0 12px; border-radius: 10px;
+  background: var(--bg-soft); border: 1px solid var(--line);
+  color: var(--fg-dim); font-size: 13.5px; font-weight: 600;
+  font-family: inherit; cursor: pointer;
+}
+.rate-btn.is-on { color: var(--accent); border-color: var(--accent); }
+
 .icon-btn {
   min-width: var(--tap); min-height: var(--tap);
   display: grid; place-items: center;
@@ -145,6 +154,25 @@ body {
 .fc-word {
   margin: 0; font-size: 27px; font-weight: 680; letter-spacing: -.3px;
   word-break: break-word; flex: 1;
+}
+.spk {
+  flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--bg-soft); border: 1px solid var(--line);
+  color: var(--accent); font-size: 17px; cursor: pointer;
+}
+.spk:active { transform: scale(.9); }
+.spk.is-playing { background: var(--accent); color: #fff; border-color: var(--accent); }
+.spk-label {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 7px; padding: 4px 10px; border-radius: 8px;
+  background: var(--bg-soft); border: 1px solid var(--line);
+  color: var(--accent); font-size: 12.5px; font-weight: 600;
+  font-family: inherit; cursor: pointer;
+}
+.spk-label.is-playing { background: var(--accent); color: #fff; border-color: var(--accent); }
+.tts-none {
+  margin-top: 8px; font-size: 12px; color: var(--warn);
 }
 .fc-pos { color: var(--fg-faint); font-size: 14px; font-style: italic; }
 .fc-phon { color: var(--accent); font-size: 16.5px; margin: 6px 0 2px; }
@@ -282,6 +310,8 @@ body {
 .wi-dot.mastered { background: var(--b2); }
 .wi-chev { color: var(--fg-faint); transition: transform .2s; }
 .word-item.is-open .wi-chev { transform: rotate(90deg); }
+.wi-spk { width: 34px; height: 34px; font-size: 15px; flex: 0 0 auto; }
+.sheet-tts { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .wi-body {
   padding: 0 14px 14px; font-size: 14.5px; color: var(--fg-dim);
   border-top: 1px solid var(--line); padding-top: 12px;
