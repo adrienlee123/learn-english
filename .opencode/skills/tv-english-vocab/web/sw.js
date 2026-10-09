@@ -1,5 +1,5 @@
 /* Cache-first service worker so the app works with no connection. */
-const CACHE = "vocab-app-v10";
+const CACHE = "vocab-app-v11";
 const ASSETS = [
   "./",
   "./index.html",
@@ -36,24 +36,31 @@ self.addEventListener("activate", (e) => {
 
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
+
+  // index.html references assets as "assets/app.js?v=<hash>". Strip the query
+  // so fingerprinted requests still hit the bare-path cache entries and keep
+  // working offline.
+  const url = new URL(e.request.url);
+  const bare = url.origin + url.pathname;
+
   e.respondWith(
-    caches.match(e.request).then((hit) => {
+    caches.match(bare, { ignoreSearch: true }).then((hit) => {
       if (hit) {
         // Refresh in the background so a redeploy is picked up next launch.
         fetch(e.request).then((res) => {
-          if (res && res.ok) caches.open(CACHE).then((c) => c.put(e.request, res));
+          if (res && res.ok) caches.open(CACHE).then((c) => c.put(bare, res));
         }).catch(() => {});
         return hit;
       }
       return fetch(e.request)
         .then((res) => {
-          if (res && res.ok && new URL(res.url).origin === location.origin) {
+          if (res && res.ok && url.origin === location.origin) {
             const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(e.request, copy));
+            caches.open(CACHE).then((c) => c.put(bare, copy));
           }
           return res;
         })
-        .catch(() => caches.match("./index.html"));
+        .catch(() => caches.match("./index.html", { ignoreSearch: true }));
     })
   );
 });

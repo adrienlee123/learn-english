@@ -16,6 +16,7 @@ Usage
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -222,6 +223,30 @@ def build_episodes(
     return episodes, flat
 
 
+def fingerprint_html(out: Path) -> list[str]:
+    """Append a content hash to asset URLs so a deploy always busts the HTTP cache.
+
+    GitHub Pages sends max-age=600. Without this, a returning browser keeps the
+    previous app.js for up to ten minutes after a deploy, and the cache-first
+    service worker then serves that stale copy on every later visit.
+
+    The service worker caches bare paths, so sw.js normalises the ?v= query
+    away before looking anything up. That keeps offline working.
+    """
+    index = out / "index.html"
+    html = index.read_text(encoding="utf-8")
+    stamped = []
+    for rel in ("assets/app.css", "assets/app.js", "assets/data.js"):
+        p = out / rel
+        if not p.exists():
+            continue
+        digest = hashlib.sha1(p.read_bytes()).hexdigest()[:8]
+        stamped.append(f"{rel}?v={digest}")
+        html = html.replace(f'"{rel}"', f'"{rel}?v={digest}"')
+    index.write_text(html, encoding="utf-8")
+    return stamped
+
+
 def write_site(out: Path, payload: dict, with_script: bool, covers: Path) -> None:
     if out.exists():
         shutil.rmtree(out)
@@ -246,6 +271,8 @@ def write_site(out: Path, payload: dict, with_script: bool, covers: Path) -> Non
         "window.VOCAB_DB = " + json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + ";\n",
         encoding="utf-8",
     )
+
+    return fingerprint_html(out)
 
 
 def main() -> int:
