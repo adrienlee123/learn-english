@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="美剧生词本">
+<title>美剧生词本</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="assets/app.css?v=a0de4912">
+</head>
+<body>
+<div id="app" data-view="library">
+  <header class="topbar">
+    <div class="topbar-row">
+      <h1 class="brand">美剧生词本</h1>
+      <div class="topbar-actions">
+        <button id="btn-rate" class="rate-btn" aria-label="朗读速度">慢</button>
+        <button id="btn-theme" class="icon-btn" aria-label="切换主题">
+          <span class="ico-theme"></span>
+        </button>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab is-active" data-tab="library" role="tab">选集</button>
+      <button class="tab" data-tab="cards" role="tab">卡片</button>
+      <button class="tab" data-tab="list" role="tab">词表</button>
+      <button class="tab" data-tab="script" role="tab">原文</button>
+      <button class="tab" data-tab="stats" role="tab">进度</button>
+    </nav>
+  </header>
+
+  <section id="view-library" class="view is-active">
+    <div id="library-body" class="library-body"></div>
+  </section>
+
+  <section id="view-cards" class="view">
+    <div class="toolbar">
+      <select id="filter-episode" class="select" aria-label="选择剧集"></select>
+      <select id="filter-level" class="select" aria-label="按级别筛选">
+        <option value="">全部级别</option>
+        <option value="B2">B2</option>
+        <option value="C1">C1</option>
+      </select>
+      <select id="filter-status" class="select" aria-label="按掌握状态筛选">
+        <option value="">全部状态</option>
+        <option value="new">未学习</option>
+        <option value="learning">复习中</option>
+        <option value="mastered">已掌握</option>
+      </select>
+    </div>
+
+    <div class="progress-strip">
+      <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
+      <div class="progress-meta">
+        <span id="progress-count">0 / 0</span>
+        <span id="progress-pct">0%</span>
+      </div>
+    </div>
+
+    <div id="card-stage" class="card-stage"></div>
+
+    <div id="card-nav" class="card-nav">
+      <button id="btn-prev" class="btn btn-ghost" aria-label="上一个">‹</button>
+      <button id="btn-known" class="btn btn-known">认识</button>
+      <button id="btn-unsure" class="btn btn-unsure">模糊</button>
+      <button id="btn-flip" class="btn btn-primary">看释义</button>
+      <button id="btn-next" class="btn btn-ghost" aria-label="下一个">›</button>
+    </div>
+  </section>
+
+  <section id="view-list" class="view">
+    <div class="toolbar">
+      <input id="search" class="input" type="search" placeholder="搜索单词或释义…" autocomplete="off">
+    </div>
+    <ul id="word-list" class="word-list"></ul>
+  </section>
+
+  <section id="view-script" class="view">
+    <div class="toolbar">
+      <select id="script-episode" class="select" aria-label="选择剧集"></select>
+      <label class="switch">
+        <input id="script-tap" type="checkbox" checked>
+        <span>点击查词</span>
+      </label>
+    </div>
+    <div id="script-meta" class="script-meta"></div>
+    <div id="script-body" class="script-body"></div>
+  </section>
+
+  <section id="view-stats" class="view">
+    <div id="stats-body" class="stats-body"></div>
+  </section>
+</div>
+
+<div id="sheet" class="sheet" hidden>
+  <div class="sheet-backdrop" data-close></div>
+  <div class="sheet-panel" role="dialog" aria-modal="true">
+    <div class="sheet-grip"></div>
+    <div id="sheet-body" class="sheet-body"></div>
+  </div>
+</div>
+
+<script src="assets/data.js?v=23176e97"></script>
+<script src="assets/app.js?v=cdc74d9d"></script>
+</body>
+</html>
