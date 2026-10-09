@@ -511,7 +511,9 @@
 
     var hitSet = {};
     DB.words.forEach(function (w) {
-      if (w.episodeKey === key) hitSet[w.lemma.toLowerCase()] = 1;
+      // An empty lemma would otherwise make every punctuation-only token
+      // ("1", "\"") register as a hit.
+      if (w.episodeKey === key && w.lemma) hitSet[w.lemma.toLowerCase()] = 1;
     });
 
     ep.lines.forEach(function (ln) {
@@ -520,13 +522,12 @@
       // Wrap known words so tapping them can show the card.
       ln.split(/(\s+)/).forEach(function (part) {
         if (!part || /^\s+$/.test(part)) { line.appendChild(document.createTextNode(part)); return; }
-        var bare = part.replace(/^[^A-Za-z'-]+|[^A-Za-z'-]+$/g, "");
-        var low = bare.toLowerCase();
-        var inDeck = tap && hitSet[low];
+        var bare = part.replace(/^[^A-Za-z'-]+|[^A-Za-z'-]+$/g, "").toLowerCase();
+        var inDeck = tap && bare && hitSet[bare];
         var node = el("span", "tok", esc(part));
         if (inDeck) {
           node.setAttribute("data-w", "1");
-          node.setAttribute("data-key", lemmaKey[key + "|" + low] || "");
+          node.setAttribute("data-key", lemmaKey[key + "|" + bare] || "");
           if (!marked) { line.setAttribute("data-hit", "1"); marked = true; }
         }
         line.appendChild(node);
