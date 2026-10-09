@@ -24,6 +24,7 @@ CASES = [
     ("my arches happen to be extremely archy", True, "回归用例：词头被误粘成整句"),
     ("her plan became impossible overnight", True, "所有格主语 + 谓语 = 命题"),
     ("his excuse turned out to be worthless", True, "所有格主语 + 谓语 = 命题"),
+    ("a roomful / be touchy", True, "回归用例：两个词头粘在一个字段"),
 
     # --- must stay quiet ---
     ("arches", False, "修正后的正确词头"),

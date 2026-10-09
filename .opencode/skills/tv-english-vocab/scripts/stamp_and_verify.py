@@ -91,6 +91,12 @@ def suspect_word(word: str, quote: str) -> str | None:
     if len(toks) >= 6:
         return f"词头 {len(toks)} 词，超出短语常见长度（需人工确认是否为整句）"
 
+    # A slash means two headwords were pasted into one field, as happened with
+    # "a roomful / be touchy", whose phonetic and gloss only covered "touchy".
+    if "/" in w.strip():
+        parts = [s.strip() for s in w.split("/") if s.strip()]
+        return f"词头用「/」拼接了 {len(parts)} 个条目（{' / '.join(parts)}），应拆开"
+
     return None
 
 
