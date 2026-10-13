@@ -46,6 +46,7 @@ KNOWN_OVERFIRES = [
     "take it back to the counter",
     "nudge something in the right direction",
     "have them by the short hairs",
+    "burn the shit out of someone",
 ]
 
 
