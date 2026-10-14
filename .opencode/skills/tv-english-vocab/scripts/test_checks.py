@@ -16,7 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from stamp_and_verify import suspect_word  # noqa: E402
+from stamp_and_verify import chinese_field_problem, suspect_word  # noqa: E402
 
 # word, expect_flagged, why
 CASES = [
@@ -36,6 +36,44 @@ CASES = [
     ("be a dick about it", False, "真短语"),
     ("giant stick up his ass", False, "4 词，无所有格主语"),
     ("heart's in the right place", False, "所有格但不是「主语+谓语」"),
+]
+
+# label, entry, expect_flagged
+CN_CASES = [
+    # --- must be caught: English prose leaked into a Chinese field ---
+    (
+        "回归：释义里混进英文",
+        {"meaning_cn": "「小蓝」——代购药Ingredients 的跑腿"},
+        True,
+    ),
+    (
+        "回归：例句结尾粘上英文",
+        {"example_cn": "他做完了戒毒疗程，现在算改过自新了Pro tip。"},
+        True,
+    ),
+    ("中文字段没写中文", {"quote_cn": "Yeah, he blew away."}, True),
+
+    # --- must stay quiet: proper nouns are legitimate inside Chinese ---
+    (
+        "人名用空格隔开",
+        {"quote_cn": "Walt，你把我关在门外的时候。"},
+        False,
+    ),
+    (
+        "外来词用空格隔开",
+        {"quote_cn": "半数交易都是在 Taco Cabeza 谈成的。"},
+        False,
+    ),
+    (
+        "音标符号不算残留",
+        {"meaning_cn": "一手交钱；现金预付（cash up front 说法）。"},
+        False,
+    ),
+    (
+        "中文口语借词不算残留",
+        {"example_cn": "他们没接那个offer？那是他们亏了。"},
+        False,
+    ),
 ]
 
 # The length rule deliberately over-fires so that long idioms get eyeballed.
@@ -63,12 +101,22 @@ def main() -> int:
                 f"  {word!r}: expected a review prompt from the length rule"
             )
 
+    for label, entry, want in CN_CASES:
+        got = chinese_field_problem(label, entry) is not None
+        if got != want:
+            failures.append(
+                f"  {label}: expected chinese-flagged={want}, got {got}"
+            )
+
     if failures:
         print("FAIL")
         print("\n".join(failures))
         return 1
 
-    print(f"PASS  {len(CASES)} cases, {len(KNOWN_OVERFIRES)} known review prompts")
+    print(
+        f"PASS  {len(CASES)} cases, {len(KNOWN_OVERFIRES)} known review prompts, "
+        f"{len(CN_CASES)} chinese-field cases"
+    )
     return 0
 
 

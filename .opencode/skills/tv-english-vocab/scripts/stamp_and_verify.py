@@ -100,6 +100,44 @@ def suspect_word(word: str, quote: str) -> str | None:
     return None
 
 
+# Fields that must be written in Chinese. `note` is deliberately excluded: usage
+# notes are expected to quote English terms back at the learner.
+CN_FIELDS = ("meaning_cn", "quote_cn", "example_cn")
+
+# Loanwords that Chinese tech/business speakers genuinely say as bare nouns.
+# Without this list the glue rule fires on "那个offer" / "开个meeting", which is
+# correct Chinese, not leaked drafting prose.
+CN_LOANWORDS = frozenset(
+    """
+    offer meeting deadline budget kickoff standup demo deploy deploys pipeline
+    roadmap milestone sprint retro feedback inbox startup founder investor pitch
+    deck KPI OK
+    """.split()
+)
+
+# An English run glued straight onto a Chinese character, with no space or
+# punctuation between them, means drafting prose leaked into a Chinese field
+# ("代购药Ingredients 的跑腿"). Proper nouns set off by a space ("White 先生",
+# "Taco Cabeza") are fine and must not trip this.
+GLUED_CN_EN = re.compile(r"[\u4e00-\u9fff]([A-Za-z]{3,})|([A-Za-z]{3,})[\u4e00-\u9fff]")
+
+
+def chinese_field_problem(word: str, entry: dict) -> str | None:
+    """Return a reason string if a Chinese-language field is malformed."""
+    for field in CN_FIELDS:
+        val = entry.get(field)
+        if not isinstance(val, str) or not val.strip():
+            continue
+        if not re.search(r"[\u4e00-\u9fff]", val):
+            return f"{field} has no Chinese characters: {val[:40]!r}"
+        for m in GLUED_CN_EN.finditer(val):
+            glued = (m.group(1) or m.group(2) or "").lower()
+            if glued in CN_LOANWORDS:
+                continue
+            return f"{field} has English glued onto Chinese at {m.group(0)!r}"
+    return None
+
+
 def audit(path: Path, entries: list[dict]) -> list[tuple[str, str]]:
     """Return (word, reason) for entries a human should look at."""
     out = []
@@ -107,7 +145,7 @@ def audit(path: Path, entries: list[dict]) -> list[tuple[str, str]]:
         if not isinstance(e, dict):
             continue
         word = str(e.get("word", ""))
-        reason = suspect_word(word, str(e.get("quote", "")))
+        reason = suspect_word(word, str(e.get("quote", ""))) or chinese_field_problem(word, e)
         if reason:
             out.append((word, reason))
     return out
@@ -165,6 +203,10 @@ def process(path: Path, sides: dict, transcript_dir: Path, check_only: bool) -> 
         level = str(w.get("level", "")).upper()
         if level not in {"B2", "C1"}:
             problems.append(f"{path.name}: entry #{i + 1} ({word}) has level {level!r}, expected B2 or C1")
+
+        cn_bad = chinese_field_problem(word, w)
+        if cn_bad:
+            problems.append(f"{path.name}: entry #{i + 1} ({word}) {cn_bad}")
 
         wanted = {
             "code": code,
