@@ -151,6 +151,59 @@ def audit(path: Path, entries: list[dict]) -> list[tuple[str, str]]:
     return out
 
 
+# --- word/phrase balance -------------------------------------------------
+#
+# A phrase-heavy deck is right for C1 (spoken English rides on chunks) but
+# wrong for B2, where the single-word base is still being built. Measured on
+# 2026-10-14 the existing corpus had drifted to 85.7% phrases at B2 against
+# the 40-50% this repo's own selection-criteria.md sets.
+#
+# Rather than rewrite 196 past entries, the ratio is enforced going forward and
+# the files that predate the gate are grandfathered below.
+MIN_WORD_RATIO = 0.35
+
+GRANDFATHERED = frozenset(
+    """
+    abbott-elementary-s01e01 abbott-elementary-s02e03
+    breaking-bad-s01e01 breaking-bad-s01e02 breaking-bad-s01e03
+    breaking-bad-s01e04 breaking-bad-s01e05 breaking-bad-s01e06
+    breaking-bad-s01e07 breaking-bad-s02e01
+    industry-s01e01 industry-s01e02
+    silicon-valley-s01e01 succession-s01e01 superstore-s01e01
+    ted-lasso-s01e01 ted-lasso-s01e02
+    the-morning-show-s01e01 the-morning-show-s01e02
+    """.split()
+)
+
+
+def is_phrase(word: str) -> bool:
+    return " " in word.strip()
+
+
+def word_share(entries: list[dict]) -> float:
+    """Share of entries that are single words rather than chunks."""
+    if not entries:
+        return 0.0
+    words = sum(1 for e in entries if isinstance(e, dict) and not is_phrase(str(e.get("word", ""))))
+    return words / len(entries)
+
+
+def balance_problem(path: Path, entries: list[dict], min_word_ratio: float = MIN_WORD_RATIO) -> str | None:
+    """Fail a new file that is mostly phrases instead of single words."""
+    if path.stem in GRANDFATHERED:
+        return None
+    share = word_share(entries)
+    if share >= min_word_ratio:
+        return None
+    need = min_word_ratio * len(entries)
+    have = round(share * len(entries))
+    return (
+        f"{path.name}: only {have}/{len(entries)} single words "
+        f"({share:.0%}, need {min_word_ratio:.0%}) — "
+        f"cut roughly {int(-(-(need - have) // 1))} chunks or add that many words"
+    )
+
+
 def process(path: Path, sides: dict, transcript_dir: Path, check_only: bool) -> list[str]:
     problems: list[str] = []
     try:
@@ -257,14 +310,22 @@ def main() -> int:
             entries = entries.get("words", [])
         flagged = audit(f, entries)
         review += [(w, r, f.name) for w, r in flagged]
+        balance = balance_problem(f, entries)
+        if balance:
+            probs.append(balance)
         total += 1
         if probs:
             all_problems.extend(probs)
             print(f"FAIL {f.name} ({len(entries)} entries)")
         else:
             verb = "checked" if args.check_only else "stamped"
-            mark = f"  [{len(flagged)} to review]" if flagged else ""
-            print(f"  ok {f.name}  {verb} {len(entries)} entries{mark}")
+            marks = []
+            if flagged:
+                marks.append(f"{len(flagged)} to review")
+            share = word_share(entries)
+            if f.stem not in GRANDFATHERED:
+                marks.append(f"words {share:.0%}")
+            print(f"  ok {f.name}  {verb} {len(entries)} entries" + (f"  [{', '.join(marks)}]" if marks else ""))
 
     if review:
         print("\nNeeds review — confirm each is a reusable chunk, not a sentence:")

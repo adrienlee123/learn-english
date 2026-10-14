@@ -16,7 +16,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from stamp_and_verify import chinese_field_problem, suspect_word  # noqa: E402
+from pathlib import Path  # noqa: E402
+
+from stamp_and_verify import (  # noqa: E402
+    GRANDFATHERED,
+    chinese_field_problem,
+    suspect_word,
+    word_share,
+)
 
 # word, expect_flagged, why
 CASES = [
@@ -76,6 +83,42 @@ CN_CASES = [
     ),
 ]
 
+
+# words list, expect_within_35pct_word_share
+BALANCE_CASES = [
+    # --- must fail the gate on a new episode ---
+    ("全习语", ["go for a bowl", "bail someone out", "cut a deal"], False),
+    (
+        "习语压倒性",
+        ["be on notice", "take the edge off", "grow some balls",
+         "work us in", "zero in on", "slip through the cracks"],
+        False,
+    ),
+    (
+        "接近但不够",
+        ["a bottleneck", "scale up", "manage expectations", "level with",
+         "run into trouble", "the upside", "growing pains"],
+        False,
+    ),
+    # --- must pass ---
+    (
+        "达标：六词四短语",
+        ["waddle", "therapeutic", "efficacy", "holistic",
+         "a PET scan", "an anti-emetic",
+         "manage expectations", "the upside", "growing pains", "be bound to"],
+        True,
+    ),
+    ("恰好踩线 7/20 = 35%", ["a", "b", "c", "d", "e", "f", "g"] + [f"w{i} x{i}" for i in range(13)], True),
+    ("差一格 6/20 = 30%", ["a", "b", "c", "d", "e", "f"] + [f"w{i} x{i}" for i in range(14)], False),
+]
+
+
+def balance_fails(words: list[str]) -> bool:
+    """Run the ratio check exactly as process() does, for a non-grandfathered file."""
+    from stamp_and_verify import balance_problem
+
+    return balance_problem(Path("hypothetical-s01e01.json"), [{"word": w} for w in words]) is not None
+
 # The length rule deliberately over-fires so that long idioms get eyeballed.
 # These are the known, accepted false positives.
 KNOWN_OVERFIRES = [
@@ -108,6 +151,30 @@ def main() -> int:
                 f"  {label}: expected chinese-flagged={want}, got {got}"
             )
 
+    for label, words, want_pass in BALANCE_CASES:
+        failed = balance_fails(words)
+        if failed == want_pass:
+            failures.append(
+                f"  配比 {label}: expected pass={want_pass}, got pass={not failed}"
+            )
+
+    # The grandfather list is transcribed by hand and has twice been written
+    # with the season/episode digits transposed (s02e01 for s01e02). Pin it to
+    # the files that actually exist: every current file must be grandfathered
+    # (so the gate never fires on shipped data) and nothing else may be listed.
+    vocab_dir = Path(__file__).resolve().parents[3] / "data" / "vocab"
+    if vocab_dir.is_dir():
+        on_disk = {p.stem for p in vocab_dir.glob("*.json")}
+        if GRANDFATHERED - on_disk:
+            failures.append(
+                f"  GRANDFATHERED 列了不存在的文件: {sorted(GRANDFATHERED - on_disk)}"
+            )
+        if on_disk - GRANDFATHERED:
+            failures.append(
+                f"  以下文件会撞上 35% 单词闸门，需加入 GRANDFATHERED: "
+                f"{sorted(on_disk - GRANDFATHERED)}"
+            )
+
     if failures:
         print("FAIL")
         print("\n".join(failures))
@@ -115,7 +182,7 @@ def main() -> int:
 
     print(
         f"PASS  {len(CASES)} cases, {len(KNOWN_OVERFIRES)} known review prompts, "
-        f"{len(CN_CASES)} chinese-field cases"
+        f"{len(CN_CASES)} chinese-field, {len(BALANCE_CASES)} balance"
     )
     return 0
 
